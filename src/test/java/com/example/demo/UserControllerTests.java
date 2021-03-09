@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -27,6 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 public class UserControllerTests
 {
     @Autowired
@@ -40,6 +42,11 @@ public class UserControllerTests
     @Rollback
     void getTheWholeTable() throws Exception
     {
+        User myUser = new User();
+        myUser.setEmail("hello there");
+        myUser.setPassword("whats up man");
+        repo.save(myUser);
+
         MockHttpServletRequestBuilder request = get("/users")
                 .contentType(MediaType.APPLICATION_JSON);
 
@@ -123,6 +130,65 @@ public class UserControllerTests
                 .andExpect(status().isOk())
                 .andDo(print())
                 .andExpect(jsonPath("$.email", is("working")));
+
+        getTheWholeTable();
+    }
+
+    @Test
+    @Transactional
+    @Rollback
+    void postToTheTableAndThenDeleteIt() throws Exception
+    {
+        User myUser = new User();
+        myUser.setEmail("hello there");
+        myUser.setPassword("whats up man");
+
+        User myUser1 = new User();
+        myUser1.setEmail("howdy there");
+        myUser1.setPassword("hey man");
+
+        repo.save(myUser); repo.save(myUser1);
+
+        MockHttpServletRequestBuilder deleteRequest = delete("/users/1")
+                .contentType(MediaType.APPLICATION_JSON);
+
+        this.mvc.perform(deleteRequest)
+                .andExpect(status().isOk())
+                .andDo(print())
+                .andExpect(jsonPath("$.count", is(1)));
+
+        getTheWholeTable();
+    }
+
+    @Test
+    @Transactional
+    @Rollback
+    void postToTheTableAndThenCheckPassword() throws Exception
+    {
+        User myUser = new User();
+        myUser.setEmail("hello");
+        myUser.setPassword("password");
+
+        User myUser1 = new User();
+        myUser1.setEmail("howdy there");
+        myUser1.setPassword("hey man");
+
+        repo.save(myUser); repo.save(myUser1);
+
+        Map<String, Object> values = new HashMap<>();
+        values.put("email", "hello");
+        values.put("password", "password");
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        MockHttpServletRequestBuilder authenticateRequest = post("/users/authenticate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(values));
+
+        this.mvc.perform(authenticateRequest)
+                .andExpect(status().isOk())
+                .andDo(print())
+                .andExpect(jsonPath("$.authenticated", is(true)));
 
         getTheWholeTable();
     }

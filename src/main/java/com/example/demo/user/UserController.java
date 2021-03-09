@@ -48,7 +48,6 @@ public class UserController
 
         fields.forEach((k, v) -> {
             // use reflection to get field k on object and set it to value v
-            // Change Claim.class to whatver your object is: Object.class
             Field field = ReflectionUtils.findField(User.class, k); // find field in the object class
             field.setAccessible(true);
             ReflectionUtils.setField(field, myUser, v); // set given field for defined object to value V
@@ -69,7 +68,7 @@ public class UserController
     }
 
     @PostMapping("/authenticate")
-    public Object checkPassword(@RequestBody Map<String, String> fields)
+    public Map<String, Object> checkPassword(@RequestBody Map<String, String> fields)
     {
         List<User> matches = this.repository.findByEmail(fields.get("email"));
 
@@ -78,7 +77,7 @@ public class UserController
             if (match.getPassword().equals(fields.get("password")))
             {
                 return Map.of("authenticated", true,
-                        "user", match);
+                              "user", match);
             }
         }
 
